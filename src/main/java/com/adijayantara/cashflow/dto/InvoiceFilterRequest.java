@@ -51,6 +51,14 @@ public class InvoiceFilterRequest {
         return (sort_dir != null && sort_dir.equalsIgnoreCase("ASC")) ? "ASC" : "DESC";
     }
 
+    public LocalDate getDateFrom() {
+        return date_from;
+    }
+
+    public LocalDate getDateTo() {
+        return date_to;
+    }
+
     public String getSortBy() {
         return (sort_by != null && !sort_by.trim().isEmpty()) ? sort_by.trim().toLowerCase() : "created_at";
     }

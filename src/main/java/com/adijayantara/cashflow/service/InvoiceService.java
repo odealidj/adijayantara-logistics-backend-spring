@@ -356,30 +356,7 @@ public class InvoiceService {
             log.warn("Redis read failed for {}: {}", cacheKey, e.getMessage());
         }
 
-        Specification<Invoice> spec = (root, query, cb) -> {
-            List<Predicate> predicates = new ArrayList<>();
-            predicates.add(cb.isNull(root.get("deletedAt")));
-
-            if (filter.getDate_from() != null) {
-                predicates.add(cb.greaterThanOrEqualTo(root.get("shipmentDate"), filter.getDate_from()));
-            }
-            if (filter.getDate_to() != null) {
-                predicates.add(cb.lessThanOrEqualTo(root.get("shipmentDate"), filter.getDate_to()));
-            }
-            if (filter.getStatus() != null) {
-                predicates.add(cb.equal(root.get("status"), filter.getStatus()));
-            }
-            if (filter.getClient_name() != null && !filter.getClient_name().trim().isEmpty()) {
-                String like = "%" + filter.getClient_name().trim().toLowerCase() + "%";
-                predicates.add(cb.like(cb.lower(root.get("clientName")), like));
-            }
-            if (filter.getInvoice_no() != null && !filter.getInvoice_no().trim().isEmpty()) {
-                String like = "%" + filter.getInvoice_no().trim().toLowerCase() + "%";
-                predicates.add(cb.like(cb.lower(root.get("invoiceNo")), like));
-            }
-
-            return cb.and(predicates.toArray(new Predicate[0]));
-        };
+        Specification<Invoice> spec = buildSpecification(filter);
 
         String property = switch (sortBy) {
             case "name", "client_name" -> "clientName";
@@ -515,5 +492,36 @@ public class InvoiceService {
         return userRepository.findById(userId)
                 .map(User::getFullName)
                 .orElse("");
+    }
+
+    public Specification<Invoice> buildSpecification(InvoiceFilterRequest filter) {
+        return (root, query, cb) -> {
+            List<jakarta.persistence.criteria.Predicate> predicates = new ArrayList<>();
+            predicates.add(cb.isNull(root.get("deletedAt")));
+
+            if (filter == null) {
+                return cb.and(predicates.toArray(new jakarta.persistence.criteria.Predicate[0]));
+            }
+
+            if (filter.getDate_from() != null) {
+                predicates.add(cb.greaterThanOrEqualTo(root.get("shipmentDate"), filter.getDate_from()));
+            }
+            if (filter.getDate_to() != null) {
+                predicates.add(cb.lessThanOrEqualTo(root.get("shipmentDate"), filter.getDate_to()));
+            }
+            if (filter.getStatus() != null) {
+                predicates.add(cb.equal(root.get("status"), filter.getStatus()));
+            }
+            if (filter.getClient_name() != null && !filter.getClient_name().trim().isEmpty()) {
+                String like = "%" + filter.getClient_name().trim().toLowerCase() + "%";
+                predicates.add(cb.like(cb.lower(root.get("clientName")), like));
+            }
+            if (filter.getInvoice_no() != null && !filter.getInvoice_no().trim().isEmpty()) {
+                String like = "%" + filter.getInvoice_no().trim().toLowerCase() + "%";
+                predicates.add(cb.like(cb.lower(root.get("invoiceNo")), like));
+            }
+
+            return cb.and(predicates.toArray(new jakarta.persistence.criteria.Predicate[0]));
+        };
     }
 }

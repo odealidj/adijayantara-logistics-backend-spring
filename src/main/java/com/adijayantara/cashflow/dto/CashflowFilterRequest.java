@@ -48,5 +48,13 @@ public class CashflowFilterRequest {
     public String getSort() {
         return (sort != null && sort.equalsIgnoreCase("ASC")) ? "ASC" : "DESC";
     }
+
+    public LocalDate getDateFrom() {
+        return date_from;
+    }
+
+    public LocalDate getDateTo() {
+        return date_to;
+    }
 }
 

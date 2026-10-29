@@ -437,28 +437,7 @@ public class CashflowService {
             log.warn("Redis read failed for {}: {}", cacheKey, e.getMessage());
         }
 
-        Specification<CashflowEntry> spec = (root, query, cb) -> {
-            List<Predicate> predicates = new ArrayList<>();
-
-            if (filter.getDate_from() != null) {
-                predicates.add(cb.greaterThanOrEqualTo(root.get("dateOfEntry"), filter.getDate_from()));
-            }
-            if (filter.getDate_to() != null) {
-                predicates.add(cb.lessThanOrEqualTo(root.get("dateOfEntry"), filter.getDate_to()));
-            }
-            if (filter.getEntry_type() != null) {
-                predicates.add(cb.equal(root.get("entryType"), filter.getEntry_type()));
-            }
-            if (filter.getRemarks() != null) {
-                predicates.add(cb.equal(root.get("remarks"), filter.getRemarks()));
-            }
-            if (filter.getVendor_name() != null && !filter.getVendor_name().trim().isEmpty()) {
-                String likePattern = "%" + filter.getVendor_name().trim().toLowerCase() + "%";
-                predicates.add(cb.like(cb.lower(root.get("vendorNameRaw")), likePattern));
-            }
-
-            return cb.and(predicates.toArray(new Predicate[0]));
-        };
+        Specification<CashflowEntry> spec = buildSpecification(filter);
 
         Sort sort = sortDir.equalsIgnoreCase("ASC")
                 ? Sort.by(Sort.Direction.ASC, "sequenceNo")
@@ -586,6 +565,34 @@ public class CashflowService {
                     .build());
         }
         return list;
+    }
+
+    public Specification<CashflowEntry> buildSpecification(CashflowFilterRequest filter) {
+        return (root, query, cb) -> {
+            List<jakarta.persistence.criteria.Predicate> predicates = new ArrayList<>();
+            if (filter == null) {
+                return cb.conjunction();
+            }
+
+            if (filter.getDate_from() != null) {
+                predicates.add(cb.greaterThanOrEqualTo(root.get("dateOfEntry"), filter.getDate_from()));
+            }
+            if (filter.getDate_to() != null) {
+                predicates.add(cb.lessThanOrEqualTo(root.get("dateOfEntry"), filter.getDate_to()));
+            }
+            if (filter.getEntry_type() != null) {
+                predicates.add(cb.equal(root.get("entryType"), filter.getEntry_type()));
+            }
+            if (filter.getRemarks() != null) {
+                predicates.add(cb.equal(root.get("remarks"), filter.getRemarks()));
+            }
+            if (filter.getVendor_name() != null && !filter.getVendor_name().trim().isEmpty()) {
+                String likePattern = "%" + filter.getVendor_name().trim().toLowerCase() + "%";
+                predicates.add(cb.like(cb.lower(root.get("vendorNameRaw")), likePattern));
+            }
+
+            return cb.and(predicates.toArray(new jakarta.persistence.criteria.Predicate[0]));
+        };
     }
 }
 

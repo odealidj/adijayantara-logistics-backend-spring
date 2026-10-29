@@ -2,17 +2,24 @@ package com.adijayantara.cashflow.controller;
 
 import com.adijayantara.cashflow.dto.*;
 import com.adijayantara.cashflow.service.CashflowService;
+import com.adijayantara.cashflow.service.ExcelExportService;
+import com.adijayantara.cashflow.service.ExcelImportService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.ContentDisposition;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 
@@ -24,6 +31,8 @@ import java.util.Map;
 public class CashflowController {
 
     private final CashflowService cashflowService;
+    private final ExcelExportService excelExportService;
+    private final ExcelImportService excelImportService;
 
     @GetMapping
     @PreAuthorize("hasAnyAuthority('*', 'cashflow.view')")
@@ -47,6 +56,31 @@ public class CashflowController {
     public ResponseEntity<ApiResponse<CashflowSummaryDto>> getSummary(@ModelAttribute CashflowFilterRequest filter) {
         CashflowSummaryDto summary = cashflowService.getSummary(filter);
         return ResponseEntity.ok(ApiResponse.success("Summary retrieved", summary));
+    }
+
+    @GetMapping("/export")
+    @PreAuthorize("hasAnyAuthority('*', 'cashflow.export', 'cashflow.view')")
+    @Operation(summary = "Ekspor Laporan Kas ke Excel", description = "Menghasilkan berkas Excel (.xlsx) resmi dengan kop surat, rincian transaksi kas & HPP, serta kalkulasi total akumulasi")
+    public ResponseEntity<byte[]> exportExcel(@ModelAttribute CashflowFilterRequest filter) {
+        byte[] excelBytes = excelExportService.exportCashflow(filter);
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"));
+        headers.setContentDisposition(ContentDisposition.attachment().filename("Laporan_Cashflow_Shipment_Control.xlsx").build());
+        return ResponseEntity.ok().headers(headers).body(excelBytes);
+    }
+
+    @PostMapping(value = "/import", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PreAuthorize("hasAnyAuthority('*', 'cashflow.import')")
+    @Operation(summary = "Impor Data Kas & Pengiriman dari Excel", description = "Mengunggah file Excel (.xlsx), membaca baris data, dan merekonstruksi saldo kas berjalan berantai")
+    public ResponseEntity<ApiResponse<Void>> importExcel(
+            @RequestParam("file") MultipartFile file,
+            @AuthenticationPrincipal UserSessionDto session
+    ) throws IOException {
+        if (file.isEmpty()) {
+            return ResponseEntity.badRequest().body(ApiResponse.error("File Excel wajib diunggah", null));
+        }
+        excelImportService.processExcelImport(file.getInputStream(), session);
+        return ResponseEntity.ok(ApiResponse.success("Excel berhasil diimpor", null));
     }
 
     @GetMapping("/periods")

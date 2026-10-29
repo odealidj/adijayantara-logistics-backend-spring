@@ -1,13 +1,17 @@
 package com.adijayantara.cashflow.controller;
 
 import com.adijayantara.cashflow.dto.*;
+import com.adijayantara.cashflow.service.ExcelExportService;
 import com.adijayantara.cashflow.service.InvoiceService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.ContentDisposition;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -24,6 +28,7 @@ import java.util.Map;
 public class InvoiceController {
 
     private final InvoiceService invoiceService;
+    private final ExcelExportService excelExportService;
 
     @GetMapping
     @PreAuthorize("hasAnyAuthority('*', 'invoices.view')")
@@ -47,6 +52,17 @@ public class InvoiceController {
     public ResponseEntity<ApiResponse<InvoiceSummaryDto>> getSummary(@ModelAttribute InvoiceFilterRequest filter) {
         InvoiceSummaryDto summary = invoiceService.getSummary(filter);
         return ResponseEntity.ok(ApiResponse.success("Invoice summary retrieved", summary));
+    }
+
+    @GetMapping("/export")
+    @PreAuthorize("hasAnyAuthority('*', 'invoices.view', 'invoices.print')")
+    @Operation(summary = "Ekspor Laporan Rekapitulasi Invoice ke Excel", description = "Menghasilkan berkas Excel (.xlsx) resmi dengan kop surat, summary KPI card piutang, dan tanda tangan otorisasi")
+    public ResponseEntity<byte[]> exportExcel(@ModelAttribute InvoiceFilterRequest filter) {
+        byte[] excelBytes = excelExportService.exportInvoices(filter);
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"));
+        headers.setContentDisposition(ContentDisposition.attachment().filename("Daftar_Invoice_Monitoring_PT_Adijayantara_Logistic.xlsx").build());
+        return ResponseEntity.ok().headers(headers).body(excelBytes);
     }
 
     @GetMapping("/periods")
