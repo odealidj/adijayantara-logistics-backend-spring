@@ -5,19 +5,19 @@ import com.adijayantara.cashflow.domain.entity.CashflowEntry;
 import com.adijayantara.cashflow.domain.enums.AuditAction;
 import com.adijayantara.cashflow.domain.enums.AuditSeverity;
 import com.adijayantara.cashflow.domain.enums.EntryType;
-import com.adijayantara.cashflow.dto.UserSessionDto;
+import com.adijayantara.cashflow.dto.*;
 import com.adijayantara.cashflow.repository.AuditLogRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 
 @Slf4j
 @Service
@@ -25,6 +25,7 @@ import java.util.Map;
 public class AuditService {
 
     private final AuditLogRepository auditLogRepository;
+    private final JdbcClient jdbcClient;
     private final ObjectMapper objectMapper;
 
     @Transactional
@@ -318,6 +319,379 @@ public class AuditService {
         } catch (Exception e) {
             log.error("Failed to serialize audit log values to JSON", e);
             return "{}";
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // Forensic Audit Queries & Scorecard Aggregations
+    // -------------------------------------------------------------------------
+
+    private String buildWhere(AuditFilterRequest filter, Map<String, Object> params) {
+        List<String> conditions = new ArrayList<>();
+        if (filter == null) {
+            return "";
+        }
+
+        if (filter.getActor_id() != null) {
+            conditions.add("actor_id = :actor_id");
+            params.put("actor_id", filter.getActor_id());
+        }
+        if (filter.getActor_name() != null && !filter.getActor_name().trim().isEmpty()) {
+            conditions.add("actor_name ILIKE :actor_name");
+            params.put("actor_name", "%" + filter.getActor_name().trim() + "%");
+        }
+        if (filter.getAction() != null && !filter.getAction().trim().isEmpty()) {
+            conditions.add("action::text = :action");
+            params.put("action", filter.getAction().trim());
+        }
+        if (filter.getEntity_type() != null && !filter.getEntity_type().trim().isEmpty()) {
+            conditions.add("entity_type = :entity_type");
+            params.put("entity_type", filter.getEntity_type().trim());
+        }
+        if (filter.getSeverity() != null && !filter.getSeverity().trim().isEmpty()) {
+            conditions.add("severity::text = :severity");
+            params.put("severity", filter.getSeverity().trim().toUpperCase());
+        }
+        if (filter.getMin_lag_days() != null) {
+            conditions.add("lag_days >= :min_lag_days");
+            params.put("min_lag_days", filter.getMin_lag_days());
+        }
+        if (filter.getStart_date() != null) {
+            conditions.add("event_date >= :start_date");
+            params.put("start_date", filter.getStart_date());
+        }
+        if (filter.getEnd_date() != null) {
+            conditions.add("event_date <= :end_date");
+            params.put("end_date", filter.getEnd_date());
+        }
+        if (filter.getSearch() != null && !filter.getSearch().trim().isEmpty()) {
+            conditions.add("(entity_reference ILIKE :search OR flag_reason ILIKE :search OR actor_name ILIKE :search)");
+            params.put("search", "%" + filter.getSearch().trim() + "%");
+        }
+
+        return conditions.isEmpty() ? "" : " WHERE " + String.join(" AND ", conditions);
+    }
+
+    @Transactional(readOnly = true)
+    public AuditSummaryKpiDto getSummaryKPI(AuditFilterRequest filter) {
+        Map<String, Object> params = new HashMap<>();
+        String where = buildWhere(filter, params);
+
+        String sql = """
+            SELECT 
+                COUNT(*) AS total_logs,
+                COUNT(*) FILTER (WHERE severity = 'CRITICAL') AS total_critical,
+                COUNT(*) FILTER (WHERE severity = 'WARNING') AS total_warning,
+                COUNT(*) FILTER (WHERE lag_days > 1) AS total_late_inputs,
+                COALESCE(AVG(lag_days) FILTER (WHERE entity_type = 'cashflow'), 0) AS avg_cashflow_lag_days,
+                COALESCE(AVG(lag_days) FILTER (WHERE entity_type = 'invoice'), 0) AS avg_invoice_lag_days,
+                COUNT(*) FILTER (WHERE severity IN ('WARNING', 'CRITICAL') OR action IN ('DELETE', 'VOID', 'RESCHEDULE_DUE_DATE')) AS total_anomalies_count,
+                COUNT(DISTINCT COALESCE(actor_name, 'Sistem')) AS total_staff_monitored
+            FROM audit_logs
+            """ + where;
+
+        var client = jdbcClient.sql(sql);
+        params.forEach(client::param);
+
+        return client.query((rs, rowNum) -> AuditSummaryKpiDto.builder()
+                .totalLogs(rs.getLong("total_logs"))
+                .totalCritical(rs.getLong("total_critical"))
+                .totalWarning(rs.getLong("total_warning"))
+                .totalLateInputs(rs.getLong("total_late_inputs"))
+                .avgCashflowLagDays(Math.round(rs.getDouble("avg_cashflow_lag_days") * 10.0) / 10.0)
+                .avgInvoiceLagDays(Math.round(rs.getDouble("avg_invoice_lag_days") * 10.0) / 10.0)
+                .totalAnomaliesCount(rs.getLong("total_anomalies_count"))
+                .totalStaffMonitored(rs.getLong("total_staff_monitored"))
+                .build()
+        ).single();
+    }
+
+    @Transactional(readOnly = true)
+    public List<StaffSlaItemDto> getStaffSLAPerformance(AuditFilterRequest filter) {
+        Map<String, Object> params = new HashMap<>();
+        String where = buildWhere(filter, params);
+
+        String sql = """
+            SELECT 
+                actor_id,
+                actor_name,
+                actor_role,
+                COUNT(*) AS total_entries,
+                COUNT(*) FILTER (WHERE lag_days <= 1) AS on_time_entries,
+                COUNT(*) FILTER (WHERE lag_days BETWEEN 2 AND 3) AS acceptable_entries,
+                COUNT(*) FILTER (WHERE lag_days > 3) AS critical_late_entries,
+                COALESCE(ROUND((COUNT(*) FILTER (WHERE lag_days <= 1)::numeric / NULLIF(COUNT(*), 0)) * 100, 1), 0) AS on_time_percentage,
+                COALESCE(ROUND(AVG(lag_days)::numeric, 1), 0) AS avg_lag_days,
+                COUNT(*) FILTER (WHERE action = 'UPDATE') AS total_edits,
+                COUNT(*) FILTER (WHERE action IN ('DELETE', 'VOID')) AS total_deletions,
+                TO_CHAR(MAX(created_at), 'YYYY-MM-DD"T"HH24:MI:SS') AS last_active_at
+            FROM audit_logs
+            """ + where + " GROUP BY actor_id, actor_name, actor_role ORDER BY critical_late_entries DESC, avg_lag_days DESC, total_entries DESC";
+
+        var client = jdbcClient.sql(sql);
+        params.forEach(client::param);
+
+        return client.query((rs, rowNum) -> {
+            UUID actorId = null;
+            String idStr = rs.getString("actor_id");
+            if (idStr != null) {
+                try { actorId = UUID.fromString(idStr); } catch (Exception ignored) {}
+            }
+            return StaffSlaItemDto.builder()
+                    .actorId(actorId)
+                    .actorName(rs.getString("actor_name"))
+                    .actorRole(rs.getString("actor_role"))
+                    .totalEntries(rs.getLong("total_entries"))
+                    .onTimeEntries(rs.getLong("on_time_entries"))
+                    .acceptableEntries(rs.getLong("acceptable_entries"))
+                    .criticalLateEntries(rs.getLong("critical_late_entries"))
+                    .onTimePercentage(rs.getDouble("on_time_percentage"))
+                    .avgLagDays(rs.getDouble("avg_lag_days"))
+                    .totalEdits(rs.getLong("total_edits"))
+                    .totalDeletions(rs.getLong("total_deletions"))
+                    .lastActiveAt(rs.getString("last_active_at"))
+                    .build();
+        }).list();
+    }
+
+    @Transactional(readOnly = true)
+    public Map<String, Object> getFraudAnomalies(AuditFilterRequest filter) {
+        Map<String, Object> params = new HashMap<>();
+        String where = buildWhere(filter, params);
+        String anomalyCond = "(severity IN ('WARNING', 'CRITICAL') OR action IN ('DELETE', 'VOID', 'RESCHEDULE_DUE_DATE') OR flag_reason ILIKE '%margin%' OR lag_days > 3)";
+
+        if (where.isEmpty()) {
+            where = " WHERE " + anomalyCond;
+        } else {
+            where += " AND " + anomalyCond;
+        }
+
+        String countSql = "SELECT COUNT(*) FROM audit_logs" + where;
+        var countClient = jdbcClient.sql(countSql);
+        params.forEach(countClient::param);
+        long total = countClient.query(Long.class).single();
+
+        int page = filter != null ? filter.getPage() : 1;
+        int limit = filter != null ? filter.getLimit() : 50;
+        int offset = (page - 1) * limit;
+
+        String selectSql = """
+            SELECT 
+                id, actor_name, actor_role, action, entity_type, entity_id, entity_reference,
+                event_date, system_timestamp, lag_days, severity, COALESCE(flag_reason, '') AS flag_reason,
+                COALESCE(old_values, '{}'::jsonb)::text AS old_values,
+                COALESCE(new_values, '{}'::jsonb)::text AS new_values,
+                created_at
+            FROM audit_logs
+            """ + where + " ORDER BY severity = 'CRITICAL' DESC, lag_days DESC, id DESC LIMIT :limit OFFSET :offset";
+
+        params.put("limit", limit);
+        params.put("offset", offset);
+
+        var selectClient = jdbcClient.sql(selectSql);
+        params.forEach(selectClient::param);
+
+        List<FraudAnomalyItemDto> items = selectClient.query((rs, rowNum) -> FraudAnomalyItemDto.builder()
+                .id(rs.getLong("id"))
+                .actorName(rs.getString("actor_name"))
+                .actorRole(rs.getString("actor_role"))
+                .action(rs.getString("action"))
+                .entityType(rs.getString("entity_type"))
+                .entityId(rs.getString("entity_id"))
+                .entityReference(rs.getString("entity_reference"))
+                .eventDate(rs.getObject("event_date", LocalDate.class))
+                .systemTimestamp(rs.getObject("system_timestamp", LocalDateTime.class))
+                .lagDays(rs.getInt("lag_days"))
+                .severity(rs.getString("severity"))
+                .flagReason(rs.getString("flag_reason"))
+                .oldValues(parseJson(rs.getString("old_values")))
+                .newValues(parseJson(rs.getString("new_values")))
+                .createdAt(rs.getObject("created_at", LocalDateTime.class))
+                .build()
+        ).list();
+
+        Map<String, Object> result = new HashMap<>();
+        result.put("items", items);
+        result.put("total", total);
+        result.put("page", page);
+        result.put("limit", limit);
+        return result;
+    }
+
+    @Transactional(readOnly = true)
+    public Map<String, Object> getInputLagRecords(AuditFilterRequest filter) {
+        Map<String, Object> params = new HashMap<>();
+        String where = buildWhere(filter, params);
+        String lagCond = "lag_days > 0";
+
+        if (where.isEmpty()) {
+            where = " WHERE " + lagCond;
+        } else {
+            where += " AND " + lagCond;
+        }
+
+        String countSql = "SELECT COUNT(*) FROM audit_logs" + where;
+        var countClient = jdbcClient.sql(countSql);
+        params.forEach(countClient::param);
+        long total = countClient.query(Long.class).single();
+
+        int page = filter != null ? filter.getPage() : 1;
+        int limit = filter != null ? filter.getLimit() : 50;
+        int offset = (page - 1) * limit;
+
+        String selectSql = """
+            SELECT 
+                id, actor_id, actor_name, actor_role, action, entity_type, entity_id, entity_reference,
+                event_date, system_timestamp, lag_days, severity, flag_reason,
+                COALESCE(old_values, '{}'::jsonb)::text AS old_values,
+                COALESCE(new_values, '{}'::jsonb)::text AS new_values,
+                ip_address, user_agent, created_at
+            FROM audit_logs
+            """ + where + " ORDER BY lag_days DESC, id DESC LIMIT :limit OFFSET :offset";
+
+        params.put("limit", limit);
+        params.put("offset", offset);
+
+        var selectClient = jdbcClient.sql(selectSql);
+        params.forEach(selectClient::param);
+
+        List<AuditLogResponseDto> items = selectClient.query((rs, rowNum) -> {
+            UUID actorId = null;
+            String idStr = rs.getString("actor_id");
+            if (idStr != null) {
+                try { actorId = UUID.fromString(idStr); } catch (Exception ignored) {}
+            }
+            return AuditLogResponseDto.builder()
+                    .id(rs.getLong("id"))
+                    .actorId(actorId)
+                    .actorName(rs.getString("actor_name"))
+                    .actorRole(rs.getString("actor_role"))
+                    .action(rs.getString("action"))
+                    .entityType(rs.getString("entity_type"))
+                    .entityId(rs.getString("entity_id"))
+                    .entityReference(rs.getString("entity_reference"))
+                    .eventDate(rs.getObject("event_date", LocalDate.class))
+                    .systemTimestamp(rs.getObject("system_timestamp", LocalDateTime.class))
+                    .lagDays(rs.getInt("lag_days"))
+                    .severity(rs.getString("severity"))
+                    .flagReason(rs.getString("flag_reason"))
+                    .oldValues(parseJson(rs.getString("old_values")))
+                    .newValues(parseJson(rs.getString("new_values")))
+                    .ipAddress(rs.getString("ip_address"))
+                    .userAgent(rs.getString("user_agent"))
+                    .createdAt(rs.getObject("created_at", LocalDateTime.class))
+                    .build();
+        }).list();
+
+        Map<String, Object> result = new HashMap<>();
+        result.put("items", items);
+        result.put("total", total);
+        result.put("page", page);
+        result.put("limit", limit);
+        return result;
+    }
+
+    @Transactional(readOnly = true)
+    public Map<String, Object> listLogs(AuditFilterRequest filter) {
+        Map<String, Object> params = new HashMap<>();
+        String where = buildWhere(filter, params);
+
+        String countSql = "SELECT COUNT(*) FROM audit_logs" + where;
+        var countClient = jdbcClient.sql(countSql);
+        params.forEach(countClient::param);
+        long total = countClient.query(Long.class).single();
+
+        int page = filter != null ? filter.getPage() : 1;
+        int limit = filter != null ? filter.getLimit() : 50;
+        int offset = (page - 1) * limit;
+
+        String selectSql = """
+            SELECT 
+                id, actor_id, actor_name, actor_role, action, entity_type, entity_id, entity_reference,
+                event_date, system_timestamp, lag_days, severity, flag_reason,
+                COALESCE(old_values, '{}'::jsonb)::text AS old_values,
+                COALESCE(new_values, '{}'::jsonb)::text AS new_values,
+                ip_address, user_agent, created_at
+            FROM audit_logs
+            """ + where + " ORDER BY id DESC LIMIT :limit OFFSET :offset";
+
+        params.put("limit", limit);
+        params.put("offset", offset);
+
+        var selectClient = jdbcClient.sql(selectSql);
+        params.forEach(selectClient::param);
+
+        List<AuditLogResponseDto> items = selectClient.query((rs, rowNum) -> {
+            UUID actorId = null;
+            String idStr = rs.getString("actor_id");
+            if (idStr != null) {
+                try { actorId = UUID.fromString(idStr); } catch (Exception ignored) {}
+            }
+            return AuditLogResponseDto.builder()
+                    .id(rs.getLong("id"))
+                    .actorId(actorId)
+                    .actorName(rs.getString("actor_name"))
+                    .actorRole(rs.getString("actor_role"))
+                    .action(rs.getString("action"))
+                    .entityType(rs.getString("entity_type"))
+                    .entityId(rs.getString("entity_id"))
+                    .entityReference(rs.getString("entity_reference"))
+                    .eventDate(rs.getObject("event_date", LocalDate.class))
+                    .systemTimestamp(rs.getObject("system_timestamp", LocalDateTime.class))
+                    .lagDays(rs.getInt("lag_days"))
+                    .severity(rs.getString("severity"))
+                    .flagReason(rs.getString("flag_reason"))
+                    .oldValues(parseJson(rs.getString("old_values")))
+                    .newValues(parseJson(rs.getString("new_values")))
+                    .ipAddress(rs.getString("ip_address"))
+                    .userAgent(rs.getString("user_agent"))
+                    .createdAt(rs.getObject("created_at", LocalDateTime.class))
+                    .build();
+        }).list();
+
+        Map<String, Object> result = new HashMap<>();
+        result.put("items", items);
+        result.put("total", total);
+        result.put("page", page);
+        result.put("limit", limit);
+        return result;
+    }
+
+    @Transactional(readOnly = true)
+    public AuditLogResponseDto getLogDetail(Long id) {
+        AuditLog log = auditLogRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Audit log tidak ditemukan dengan ID: " + id));
+
+        return AuditLogResponseDto.builder()
+                .id(log.getId())
+                .actorId(log.getActorId())
+                .actorName(log.getActorName())
+                .actorRole(log.getActorRole())
+                .action(log.getAction() != null ? log.getAction().name() : "")
+                .entityType(log.getEntityType())
+                .entityId(log.getEntityId())
+                .entityReference(log.getEntityReference())
+                .eventDate(log.getEventDate())
+                .systemTimestamp(log.getSystemTimestamp())
+                .lagDays(log.getLagDays())
+                .severity(log.getSeverity() != null ? log.getSeverity().name() : "")
+                .flagReason(log.getFlagReason())
+                .oldValues(parseJson(log.getOldValues()))
+                .newValues(parseJson(log.getNewValues()))
+                .ipAddress(log.getIpAddress())
+                .userAgent(log.getUserAgent())
+                .createdAt(log.getCreatedAt())
+                .build();
+    }
+
+    private Object parseJson(String json) {
+        if (json == null || json.isBlank() || json.equals("{}")) {
+            return Collections.emptyMap();
+        }
+        try {
+            return objectMapper.readValue(json, Object.class);
+        } catch (Exception e) {
+            return json;
         }
     }
 }

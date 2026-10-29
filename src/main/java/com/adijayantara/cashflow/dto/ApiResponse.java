@@ -60,5 +60,15 @@ public class ApiResponse<T> {
                 .errors(errors)
                 .build();
     }
+
+    @JsonProperty("success")
+    public boolean getSuccess() {
+        return status;
+    }
+
+    @JsonProperty("pagination")
+    public PaginationMeta getPagination() {
+        return meta;
+    }
 }
 
