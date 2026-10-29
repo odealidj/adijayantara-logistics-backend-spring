@@ -1,0 +1,73 @@
+server:
+  port: 8081
+  shutdown: graceful
+
+spring:
+  application:
+    name: adijayantara-logistics-backend-spring
+  
+  # Java 21 Virtual Threads (Project Loom) for ultra-lightweight concurrency
+  threads:
+    virtual:
+      enabled: true
+
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/cashflow_db}
+    username: ${SPRING_DATASOURCE_USERNAME:cashflow_user}
+    password: ${SPRING_DATASOURCE_PASSWORD:cashflow_pass}
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: 15
+      minimum-idle: 5
+      idle-timeout: 300000
+      max-lifetime: 1800000
+      connection-timeout: 20000
+
+  jpa:
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
+    show-sql: false
+    # STRICT COMPLIANCE: Zero DDL Modification (Single Source of Truth is Go Migrations)
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        format_sql: false
+        jdbc:
+          batch_size: 25
+
+  data:
+    redis:
+      host: ${SPRING_REDIS_HOST:localhost}
+      port: ${SPRING_REDIS_PORT:6379}
+      timeout: 2000ms
+
+# Management & Observability (Prometheus Metrics)
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus,metrics
+  endpoint:
+    health:
+      show-details: always
+    prometheus:
+      enabled: true
+  metrics:
+    tags:
+      application: ${spring.application.name}
+
+# OpenAPI / Swagger UI
+springdoc:
+  api-docs:
+    path: /api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    operations-sorter: method
+    tags-sorter: alpha
+
+logging:
+  level:
+    root: INFO
+    com.adijayantara: DEBUG
+    org.springframework.security: INFO
+
