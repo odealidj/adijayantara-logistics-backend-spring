@@ -20,5 +20,18 @@ public interface InvoiceRepository extends JpaRepository<Invoice, Integer>, JpaS
     Page<Invoice> findByStatusAndDeletedAtIsNull(InvoiceStatus status, Pageable pageable);
 
     Optional<Invoice> findByCashflowEntryId(Integer cashflowEntryId);
+
+    @org.springframework.data.jpa.repository.Query(value = """
+        SELECT 
+            TO_CHAR(shipment_date, 'YYYY-MM') AS month_key,
+            EXTRACT(YEAR FROM shipment_date)::INT AS year,
+            EXTRACT(MONTH FROM shipment_date)::INT AS month,
+            COUNT(*)::BIGINT AS total_count
+        FROM invoices
+        WHERE deleted_at IS NULL
+        GROUP BY 1, 2, 3
+        ORDER BY month_key DESC
+    """, nativeQuery = true)
+    java.util.List<Object[]> findAvailablePeriodsRaw();
 }
 

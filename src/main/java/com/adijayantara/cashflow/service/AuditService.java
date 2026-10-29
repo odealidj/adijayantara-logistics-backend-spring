@@ -201,6 +201,117 @@ public class AuditService {
         record(auditLog);
     }
 
+    @Transactional
+    public void logInvoiceCreate(com.adijayantara.cashflow.domain.entity.Invoice inv, UserSessionDto session) {
+        if (inv == null) return;
+
+        Map<String, Object> values = new HashMap<>();
+        values.put("invoice_no", inv.getInvoiceNo());
+        values.put("client_name", inv.getClientName());
+        values.put("amount", inv.getAmount());
+        values.put("status", inv.getStatus());
+        values.put("top_days", inv.getTopDays());
+        values.put("due_date", inv.getDueDate());
+
+        AuditLog auditLog = AuditLog.builder()
+                .actorId(session != null ? session.getUserId() : null)
+                .actorName(session != null && session.getFullName() != null ? session.getFullName() : "Sistem")
+                .actorRole(session != null && session.getRole() != null ? session.getRole() : "system")
+                .action(AuditAction.CREATE)
+                .entityType("invoice")
+                .entityId(String.valueOf(inv.getId()))
+                .entityReference(String.format("%s (%s)", inv.getInvoiceNo(), inv.getClientName()))
+                .eventDate(inv.getShipmentDate())
+                .severity(AuditSeverity.NORMAL)
+                .newValues(toJson(values))
+                .build();
+
+        record(auditLog);
+    }
+
+    @Transactional
+    public void logInvoiceReschedule(com.adijayantara.cashflow.domain.entity.Invoice inv, LocalDate prevDate, LocalDate newDate, String reason, UserSessionDto session) {
+        if (inv == null) return;
+
+        Map<String, Object> oldVals = Map.of("due_date", prevDate.toString());
+        Map<String, Object> newVals = Map.of("due_date", newDate.toString(), "reason", reason);
+
+        String flagReason = String.format("Perpanjangan tempo invoice %s: %s", inv.getInvoiceNo(), reason);
+
+        AuditLog auditLog = AuditLog.builder()
+                .actorId(session != null ? session.getUserId() : null)
+                .actorName(session != null && session.getFullName() != null ? session.getFullName() : "Sistem")
+                .actorRole(session != null && session.getRole() != null ? session.getRole() : "system")
+                .action(AuditAction.RESCHEDULE_DUE_DATE)
+                .entityType("invoice")
+                .entityId(String.valueOf(inv.getId()))
+                .entityReference(String.format("%s (%s)", inv.getInvoiceNo(), inv.getClientName()))
+                .eventDate(inv.getShipmentDate())
+                .severity(AuditSeverity.WARNING)
+                .flagReason(flagReason)
+                .oldValues(toJson(oldVals))
+                .newValues(toJson(newVals))
+                .build();
+
+        record(auditLog);
+    }
+
+    @Transactional
+    public void logInvoiceSettle(com.adijayantara.cashflow.domain.entity.Invoice inv, java.math.BigDecimal amount, String refNo, UserSessionDto session) {
+        if (inv == null) return;
+
+        Map<String, Object> values = new HashMap<>();
+        values.put("settled_amount", amount);
+        values.put("reference_no", refNo != null ? refNo : "");
+
+        String flagReason = String.format("Pelunasan invoice %s sebesar Rp %s", inv.getInvoiceNo(), amount);
+
+        AuditLog auditLog = AuditLog.builder()
+                .actorId(session != null ? session.getUserId() : null)
+                .actorName(session != null && session.getFullName() != null ? session.getFullName() : "Sistem")
+                .actorRole(session != null && session.getRole() != null ? session.getRole() : "system")
+                .action(AuditAction.SETTLE_INVOICE)
+                .entityType("invoice")
+                .entityId(String.valueOf(inv.getId()))
+                .entityReference(String.format("%s (%s)", inv.getInvoiceNo(), inv.getClientName()))
+                .eventDate(inv.getShipmentDate())
+                .severity(AuditSeverity.NORMAL)
+                .flagReason(flagReason)
+                .newValues(toJson(values))
+                .build();
+
+        record(auditLog);
+    }
+
+    @Transactional
+    public void logInvoiceDelete(com.adijayantara.cashflow.domain.entity.Invoice inv, UserSessionDto session) {
+        if (inv == null) return;
+
+        Map<String, Object> oldVals = new HashMap<>();
+        oldVals.put("invoice_no", inv.getInvoiceNo());
+        oldVals.put("client_name", inv.getClientName());
+        oldVals.put("amount", inv.getAmount());
+        oldVals.put("status", inv.getStatus());
+
+        String reason = String.format("Penghapusan invoice %s (%s)", inv.getInvoiceNo(), inv.getClientName());
+
+        AuditLog auditLog = AuditLog.builder()
+                .actorId(session != null ? session.getUserId() : null)
+                .actorName(session != null && session.getFullName() != null ? session.getFullName() : "Sistem")
+                .actorRole(session != null && session.getRole() != null ? session.getRole() : "system")
+                .action(AuditAction.DELETE)
+                .entityType("invoice")
+                .entityId(String.valueOf(inv.getId()))
+                .entityReference(String.format("%s (%s)", inv.getInvoiceNo(), inv.getClientName()))
+                .eventDate(inv.getShipmentDate())
+                .severity(AuditSeverity.CRITICAL)
+                .flagReason(reason)
+                .oldValues(toJson(oldVals))
+                .build();
+
+        record(auditLog);
+    }
+
     private String toJson(Object obj) {
         try {
             return objectMapper.writeValueAsString(obj);
@@ -210,3 +321,4 @@ public class AuditService {
         }
     }
 }
+

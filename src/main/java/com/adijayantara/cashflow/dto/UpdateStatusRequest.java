@@ -18,3 +18,4 @@ public class UpdateStatusRequest {
     @JsonProperty("remarks")
     private PaymentStatus remarks;
 }
+

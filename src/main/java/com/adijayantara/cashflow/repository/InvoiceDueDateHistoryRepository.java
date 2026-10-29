@@ -9,5 +9,6 @@ import java.util.List;
 @Repository
 public interface InvoiceDueDateHistoryRepository extends JpaRepository<InvoiceDueDateHistory, Integer> {
     List<InvoiceDueDateHistory> findByInvoiceIdOrderByCreatedAtDesc(Integer invoiceId);
+    int countByInvoiceId(Integer invoiceId);
 }
 

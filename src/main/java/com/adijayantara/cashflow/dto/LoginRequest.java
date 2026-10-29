@@ -21,3 +21,4 @@ public class LoginRequest {
     @JsonProperty("password")
     private String password;
 }
+

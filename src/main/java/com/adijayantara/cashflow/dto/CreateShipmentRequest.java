@@ -63,3 +63,4 @@ public class CreateShipmentRequest {
     @JsonProperty("remarks")
     private PaymentStatus remarks;
 }
+

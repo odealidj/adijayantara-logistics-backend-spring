@@ -24,3 +24,4 @@ public class AvailablePeriodDto {
     @JsonProperty("total_count")
     private Long totalCount;
 }
+

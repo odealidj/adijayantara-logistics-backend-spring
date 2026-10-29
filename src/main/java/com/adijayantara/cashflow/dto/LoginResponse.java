@@ -18,3 +18,4 @@ public class LoginResponse {
     @JsonProperty("user")
     private UserSessionDto user;
 }
+

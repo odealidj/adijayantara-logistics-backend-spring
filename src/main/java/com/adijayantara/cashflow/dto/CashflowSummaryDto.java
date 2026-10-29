@@ -42,3 +42,4 @@ public class CashflowSummaryDto {
     @Builder.Default
     private BigDecimal unpaidAmount = BigDecimal.ZERO;
 }
+

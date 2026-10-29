@@ -95,6 +95,42 @@ public class CashflowService {
     }
 
     @Transactional
+    public CashflowEntryResponseDto recordInvoicePayment(Integer invoiceId, BigDecimal amount, LocalDate paymentDate, String actInfo, String actExplain, UserSessionDto user) {
+        if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new IllegalArgumentException("Pelunasan invoice harus memiliki nilai penerimaan kas (kredit) yang valid");
+        }
+
+        UUID actorId = user != null ? user.getUserId() : null;
+        BigDecimal lastSaldo = cashflowEntryRepository.getLastSaldoForUpdate();
+        BigDecimal newSaldo = lastSaldo.add(amount);
+
+        CashflowEntry entry = CashflowEntry.builder()
+                .entryType(EntryType.INVOICE_PAYMENT)
+                .kredit(amount)
+                .debit(BigDecimal.ZERO)
+                .saldo(newSaldo)
+                .dateOfEntry(paymentDate != null ? paymentDate : LocalDate.now())
+                .actInformation(actInfo != null ? actInfo.trim() : "Pelunasan Invoice")
+                .actExplaination(actExplain != null ? actExplain.trim() : "")
+                .grandCost(BigDecimal.ZERO)
+                .grandSelling(amount)
+                .profit(BigDecimal.ZERO)
+                .marginPct(BigDecimal.ZERO)
+                .remarks(PaymentStatus.PAID)
+                .invoiceId(invoiceId)
+                .createdBy(actorId)
+                .updatedBy(actorId)
+                .build();
+
+        CashflowEntry saved = cashflowEntryRepository.save(entry);
+
+        invalidateCache();
+        auditService.logCashflowCreate(saved, user);
+
+        return CashflowEntryResponseDto.fromEntity(saved);
+    }
+
+    @Transactional
     public CashflowEntryResponseDto recordShipment(CreateShipmentRequest req, UserSessionDto user) {
         UUID actorId = user != null ? user.getUserId() : null;
 
@@ -552,3 +588,4 @@ public class CashflowService {
         return list;
     }
 }
+

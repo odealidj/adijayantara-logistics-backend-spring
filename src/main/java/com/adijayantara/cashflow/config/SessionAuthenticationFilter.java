@@ -67,3 +67,4 @@ public class SessionAuthenticationFilter extends OncePerRequestFilter {
         return null;
     }
 }
+

@@ -98,3 +98,4 @@ class AuthControllerIntegrationTest {
                 .andExpect(jsonPath("$.message").value("kredensial tidak valid"));
     }
 }
+

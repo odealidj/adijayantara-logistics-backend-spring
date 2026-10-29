@@ -42,3 +42,4 @@ public class SessionAuthenticationToken extends AbstractAuthenticationToken {
         return principal;
     }
 }
+

@@ -65,3 +65,4 @@ public class UpdateCashflowRequest {
     @JsonDeserialize(using = FlexibleLocalDateDeserializer.class)
     private LocalDate dueDate;
 }
+

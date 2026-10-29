@@ -53,3 +53,4 @@ public class UserSessionDto implements Serializable {
     @JsonProperty("expires_at")
     private String expiresAt;
 }
+

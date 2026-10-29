@@ -59,3 +59,4 @@ public class GlobalExceptionHandler {
                 .body(ApiResponse.error("Terjadi kendala pada server. Silakan hubungi Administrator."));
     }
 }
+

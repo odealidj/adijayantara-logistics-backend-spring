@@ -49,3 +49,4 @@ public class CashflowFilterRequest {
         return (sort != null && sort.equalsIgnoreCase("ASC")) ? "ASC" : "DESC";
     }
 }
+

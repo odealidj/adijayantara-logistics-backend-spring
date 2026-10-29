@@ -37,3 +37,4 @@ public class FlexibleLocalDateDeserializer extends JsonDeserializer<LocalDate> {
         }
     }
 }
+
