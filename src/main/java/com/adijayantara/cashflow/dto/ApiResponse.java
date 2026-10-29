@@ -46,6 +46,15 @@ public class ApiResponse<T> {
                 .build();
     }
 
+    public static <T> ApiResponse<T> paginated(String message, T data, int page, int limit, long totalItems) {
+        return ApiResponse.<T>builder()
+                .status(true)
+                .message(message)
+                .data(data)
+                .meta(PaginationMeta.of(page, limit, (int) totalItems))
+                .build();
+    }
+
     public static <T> ApiResponse<T> error(String message) {
         return ApiResponse.<T>builder()
                 .status(false)
