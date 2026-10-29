@@ -15,3 +15,4 @@ public interface UserRepository extends JpaRepository<User, UUID>, JpaSpecificat
     Optional<User> findByPhoneAndDeletedAtIsNull(String phone);
     boolean existsByEmail(String email);
 }
+

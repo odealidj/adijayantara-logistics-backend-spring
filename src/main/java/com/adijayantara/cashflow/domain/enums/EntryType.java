@@ -5,3 +5,4 @@ public enum EntryType {
     TOP_UP,
     INVOICE_PAYMENT
 }
+

@@ -12,3 +12,4 @@ class CashflowApplicationTests {
         // dan Hibernate sukses memvalidasi skema PostgreSQL (ddl-auto: validate)
     }
 }
+

@@ -115,3 +115,4 @@ public class CashflowEntryHistory {
     @Builder.Default
     private String archiveReason = "import_upsert";
 }
+

@@ -54,3 +54,4 @@ public class Role {
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 }
+

@@ -13,3 +13,4 @@ public interface PermissionRepository extends JpaRepository<Permission, UUID> {
     Optional<Permission> findByCode(String code);
     List<Permission> findByModule(String module);
 }
+

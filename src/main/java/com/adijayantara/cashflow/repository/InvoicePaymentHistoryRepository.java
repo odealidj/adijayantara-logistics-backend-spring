@@ -10,3 +10,4 @@ import java.util.List;
 public interface InvoicePaymentHistoryRepository extends JpaRepository<InvoicePaymentHistory, Integer> {
     List<InvoicePaymentHistory> findByInvoiceIdOrderByPaymentDateDesc(Integer invoiceId);
 }
+

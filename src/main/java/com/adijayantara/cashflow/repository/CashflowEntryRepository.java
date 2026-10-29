@@ -22,3 +22,4 @@ public interface CashflowEntryRepository extends JpaRepository<CashflowEntry, In
 
     Optional<CashflowEntry> findByInvoiceId(Integer invoiceId);
 }
+

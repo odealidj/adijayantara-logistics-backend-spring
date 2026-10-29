@@ -45,3 +45,4 @@ public class ActivityPreset {
     @Column(name = "deleted_at")
     private LocalDateTime deletedAt;
 }
+

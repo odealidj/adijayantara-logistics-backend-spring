@@ -16,3 +16,4 @@ public interface CustomerRepository extends JpaRepository<Customer, Integer> {
     List<Customer> findByDeletedAtIsNullOrderByNameAsc();
     boolean existsByNameIgnoreCaseAndDeletedAtIsNull(String name);
 }
+

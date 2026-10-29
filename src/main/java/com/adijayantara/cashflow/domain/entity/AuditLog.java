@@ -89,3 +89,4 @@ public class AuditLog {
     @Column(name = "created_at", updatable = false, nullable = false)
     private LocalDateTime createdAt;
 }
+

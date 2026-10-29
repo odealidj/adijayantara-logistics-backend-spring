@@ -16,3 +16,4 @@ public interface AuditLogRepository extends JpaRepository<AuditLog, Long>, JpaSp
     List<AuditLog> findByLagDaysGreaterThanOrderByCreatedAtDesc(Integer minLagDays);
     long countByEventDateBetween(LocalDate start, LocalDate end);
 }
+

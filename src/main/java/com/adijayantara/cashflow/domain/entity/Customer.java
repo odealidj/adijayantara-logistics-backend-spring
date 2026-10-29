@@ -50,3 +50,4 @@ public class Customer {
     @Column(name = "deleted_at")
     private LocalDateTime deletedAt;
 }
+

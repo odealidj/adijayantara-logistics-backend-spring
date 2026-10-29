@@ -15,3 +15,4 @@ public interface ActivityPresetRepository extends JpaRepository<ActivityPreset, 
     Page<ActivityPreset> findByCategoryAndDeletedAtIsNull(String category, Pageable pageable);
     Optional<ActivityPreset> findByCategoryAndNameIgnoreCaseAndDeletedAtIsNull(String category, String name);
 }
+

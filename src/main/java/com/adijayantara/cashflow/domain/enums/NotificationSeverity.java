@@ -5,3 +5,4 @@ public enum NotificationSeverity {
     WARNING,
     INFO
 }
+

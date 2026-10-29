@@ -10,3 +10,4 @@ public enum AuditAction {
     EXPORT_EXCEL,
     LOGIN
 }
+

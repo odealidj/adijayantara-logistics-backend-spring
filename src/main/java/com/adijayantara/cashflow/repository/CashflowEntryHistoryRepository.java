@@ -13,3 +13,4 @@ public interface CashflowEntryHistoryRepository extends JpaRepository<CashflowEn
     List<CashflowEntryHistory> findByEntryIdOrderByArchivedAtDesc(Integer entryId);
     Page<CashflowEntryHistory> findByEntryId(Integer entryId, Pageable pageable);
 }
+

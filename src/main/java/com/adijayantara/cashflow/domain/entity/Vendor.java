@@ -44,3 +44,4 @@ public class Vendor {
     @Column(name = "deleted_at")
     private LocalDateTime deletedAt;
 }
+

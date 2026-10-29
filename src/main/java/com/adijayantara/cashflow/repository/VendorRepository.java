@@ -16,3 +16,4 @@ public interface VendorRepository extends JpaRepository<Vendor, Integer> {
     List<Vendor> findByDeletedAtIsNullOrderByNameAsc();
     boolean existsByNameIgnoreCaseAndDeletedAtIsNull(String name);
 }
+
