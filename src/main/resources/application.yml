@@ -14,7 +14,7 @@ spring:
   datasource:
     url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/cashflow_db}
     username: ${SPRING_DATASOURCE_USERNAME:cashflow_user}
-    password: ${SPRING_DATASOURCE_PASSWORD:cashflow_pass}
+    password: ${SPRING_DATASOURCE_PASSWORD:cashflow_password}
     driver-class-name: org.postgresql.Driver
     hikari:
       maximum-pool-size: 15
