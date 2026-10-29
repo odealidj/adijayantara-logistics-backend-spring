@@ -4,6 +4,8 @@ import com.adijayantara.cashflow.domain.enums.EntryType;
 import com.adijayantara.cashflow.domain.enums.PaymentStatus;
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.Generated;
+import org.hibernate.generator.EventType;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.JdbcType;
 import org.hibernate.annotations.UpdateTimestamp;
@@ -28,7 +30,8 @@ public class CashflowEntry {
     @Column(name = "id")
     private Integer id;
 
-    @Column(name = "sequence_no", nullable = false)
+    @Generated(event = EventType.INSERT)
+    @Column(name = "sequence_no", insertable = false, updatable = false)
     private Integer sequenceNo;
 
     @Enumerated(EnumType.STRING)
