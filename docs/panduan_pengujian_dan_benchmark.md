@@ -93,3 +93,4 @@ ab -n 1000 -c 100 -H "Authorization: Bearer sess_<token>" http://localhost:8081/
    - Mampu menangani ribuan concurrent request tanpa lonjakan konsumsi memori heap.
    - P99 Latency tetap stabil di bawah 45ms.
    - Pemanfaatan CPU lebih efisien karena tidak ada overhead context-switching thread OS.
+

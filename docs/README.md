@@ -13,6 +13,8 @@ Selamat datang di pusat dokumentasi teknis repositori **`adijayantara-logistics-
 | [**2. Spesifikasi Kontrak API & Autentikasi**](./panduan_api_dan_kontrak_frontend.md) | Standarisasi JSON Response, kontrak integrasi Next.js, autentikasi sesi Redis 24 jam (`sess_<token>`), dan OpenAPI/Swagger UI. |
 | [**3. Panduan Pengujian & Verifikasi Suite**](./panduan_pengujian_dan_benchmark.md) | Strategi pengujian integrasi Spring Boot, cakupan test suite MockMvc 100%, dan cara menjalankan frontend Next.js showcase (:3001). |
 | [**4. Panduan Deployment, Docker & Monitoring**](./panduan_deployment_dan_docker.md) | Panduan kontainerisasi multi-stage Docker, tuning alokasi memori JVM enterprise, telemetri Prometheus, dan isolasi VPS. |
+| [**5. Desain UI Mobile & Wireframe Referensi**](./contoh-ui-mobile/README.md) | Dokumentasi komprehensif sistem desain UI, peta navigasi layar mobile, komponen wireframe, serta mapping fitur ke backend. |
+| [**6. Galeri Screenshot UI Asli**](../contoh-ui/) | Direktori tangkapan layar asli rancangan antarmuka pengguna (Beranda, Laporan, Tagihan, Pengaturan, Tambah Transaksi). |
 
 ---
 
@@ -27,3 +29,4 @@ Selamat datang di pusat dokumentasi teknis repositori **`adijayantara-logistics-
    - Struktur database dikelola 100% secara terpusat oleh skrip migrasi Go di repositori utama.
 3. **API Contract Parity**:
    - 100% kompatibel dengan frontend Next.js tanpa memerlukan perubahan logika UI.
+

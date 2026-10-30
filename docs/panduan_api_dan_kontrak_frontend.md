@@ -124,3 +124,4 @@ export default nextConfig;
 Dengan konfigurasi ini:
 - Frontend memanggil `/api/v1/...` secara lokal dari browser.
 - Next.js server bertindak sebagai reverse proxy ke `http://localhost:8081` tanpa mengalami kendala CORS di browser.
+

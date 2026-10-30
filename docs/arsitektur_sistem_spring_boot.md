@@ -91,3 +91,4 @@ Untuk mencegah *race condition* atau saldo korup saat ada dua staf menginput pen
    - Jika `TOP_UP`: $\text{Saldo Baru} = \text{Saldo Sebelumnya} + \text{Kredit}$
    - Jika `SHIPMENT`: $\text{Saldo Baru} = \text{Saldo Sebelumnya} - \text{Debit}$
 3. Transaksi di-commit secara terisolasi dalam Spring `@Transactional`.
+
