@@ -94,3 +94,4 @@ public class AuditController {
         return ResponseEntity.ok(ApiResponse.success("Audit log detail retrieved", detail));
     }
 }
+

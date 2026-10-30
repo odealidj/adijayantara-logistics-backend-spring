@@ -53,3 +53,4 @@ public class CreateInvoiceRequest {
     @JsonProperty("cashflow_entry_id")
     private Integer cashflowEntryId;
 }
+

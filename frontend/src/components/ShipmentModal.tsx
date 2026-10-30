@@ -1,0 +1,524 @@
+"use client";
+
+import { useState, useEffect } from "react";
+import { X, Loader2, Truck, TrendingUp, DollarSign, Wallet, ArrowRight, AlertTriangle } from "lucide-react";
+import { formatRupiah, calculateProfit, calculateMarginPct, calculateDueDate } from "@/hooks/useAutoCalculate";
+import { formatThousand, cleanThousand, terbilangRingkas } from "@/hooks/useTerbilang";
+import { VendorSelect } from "@/components/VendorSelect";
+import { CustomerSelect } from "@/components/CustomerSelect";
+import { ActivityPresetSelect } from "@/components/shared/ActivityPresetSelect";
+import { formatDate } from "@/lib/dateUtils";
+import { fetchWithAuth } from "@/lib/apiClient";
+
+interface ShipmentModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onSuccess: () => void;
+}
+
+export function ShipmentModal({ isOpen, onClose, onSuccess }: ShipmentModalProps) {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [currentSaldo, setCurrentSaldo] = useState<number | null>(null);
+  const [formData, setFormData] = useState({
+    date_of_entry: new Date().toISOString().split("T")[0],
+    vendor_name_raw: "",
+    customer_name_raw: "",
+    act_information: "",
+    act_explaination: "",
+    grand_cost: "",
+    grand_selling: "",
+    debit: "",
+    top_days: "14",
+    due_date: "",
+    remarks: "UNPAID"
+  });
+
+  // Fetch current saldo and reset form whenever modal opens
+  useEffect(() => {
+    if (!isOpen) return;
+    setFormData({
+      date_of_entry: new Date().toISOString().split("T")[0],
+      vendor_name_raw: "",
+      customer_name_raw: "",
+      act_information: "",
+      act_explaination: "",
+      grand_cost: "",
+      grand_selling: "",
+      debit: "",
+      top_days: "14",
+      due_date: "",
+      remarks: "UNPAID"
+    });
+    setError("");
+    const fetchSaldo = async () => {
+      try {
+        const res = await fetchWithAuth("/api/v1/cashflow/summary");
+        const data = await res.json();
+        if (data.status && data.data) {
+          setCurrentSaldo(data.data.current_saldo || 0);
+        }
+      } catch (e) {
+        console.error("Gagal mengambil saldo terkini:", e);
+      }
+    };
+    fetchSaldo();
+  }, [isOpen]);
+
+  if (!isOpen) return null;
+
+  const costNum = parseFloat(formData.grand_cost || "0");
+  const sellNum = parseFloat(formData.grand_selling || "0");
+  const profitNum = calculateProfit(sellNum, costNum);
+  const marginNum = calculateMarginPct(profitNum, sellNum);
+  const autoDueDate = calculateDueDate(formData.date_of_entry, parseInt(formData.top_days || "0", 10));
+  const effectiveDueDate = formData.due_date || autoDueDate;
+  const projectedSaldo = (currentSaldo ?? 0) - costNum;
+  const isDeficit = currentSaldo !== null && projectedSaldo < 0;
+  const isWarningLow = currentSaldo !== null && !isDeficit && projectedSaldo < 5000000 && (costNum > 0 || (currentSaldo ?? 0) < 5000000);
+  const isSafe = currentSaldo !== null && !isDeficit && !isWarningLow;
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setError("");
+
+    try {
+      const res = await fetchWithAuth("/api/v1/cashflow/shipment", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          date_of_entry: new Date(formData.date_of_entry).toISOString(),
+          vendor_name_raw: formData.vendor_name_raw,
+          customer_name_raw: formData.customer_name_raw,
+          act_information: formData.act_information,
+          act_explaination: formData.act_explaination,
+          grand_cost: costNum,
+          grand_selling: sellNum,
+          debit: parseFloat(formData.debit || formData.grand_cost || "0"),
+          top_days: parseInt(formData.top_days || "0", 10),
+          due_date: effectiveDueDate ? new Date(effectiveDueDate).toISOString() : null,
+          remarks: formData.remarks
+        })
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || "Gagal mencatat shipment");
+
+      onSuccess();
+      onClose();
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-fade-in overflow-y-auto">
+      <div className="bg-white w-full max-w-2xl rounded-3xl overflow-hidden flex flex-col shadow-2xl border border-slate-200 my-auto max-h-[92vh]">
+        {/* Header Gradient Nordic Navy (Selaras dengan Buat Invoice Baru) */}
+        <div className="bg-linear-to-r from-[#1B2A4A] to-[#223249] p-5 text-white flex justify-between items-center shrink-0">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-2xl bg-white/10 flex items-center justify-center border border-white/20">
+              <Truck className="w-5 h-5 text-sky-300" />
+            </div>
+            <div>
+              <h2 className="text-base font-black tracking-tight">Catat Pengiriman (Shipment)</h2>
+              <p className="text-xs text-sky-200/80 font-medium">Pencatatan biaya transport, pendapatan, dan jatuh tempo vendor</p>
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white/80 hover:text-white transition-colors cursor-pointer"
+            title="Tutup"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        {/* Modal Scrollable Body */}
+        <div className="p-6 overflow-y-auto soft-scrollbar">
+          {error && (
+            <div className="bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold p-3 rounded-xl mb-4">
+              {error}
+            </div>
+          )}
+
+          <form onSubmit={handleSubmit} className="space-y-4">
+          {/* SEKSI 1: IDENTITAS OPERASIONAL & LOGISTIK */}
+          <div className="space-y-3">
+            {/* Baris 1: Tanggal Transaksi & Nama Vendor / Transporter */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Tanggal Transaksi *</label>
+                <input
+                  type="date"
+                  required
+                  value={formData.date_of_entry}
+                  onChange={e => setFormData({ ...formData, date_of_entry: e.target.value })}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 px-3 text-xs text-slate-800 focus:bg-white focus:ring-2 focus:ring-sky-600 focus:outline-none font-medium"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Nama Vendor / Transporter *</label>
+                <VendorSelect
+                  value={formData.vendor_name_raw}
+                  onChange={v => setFormData({ ...formData, vendor_name_raw: v })}
+                  required
+                  placeholder="Pilih atau ketik vendor..."
+                />
+              </div>
+            </div>
+
+            {/* Baris 2: Nama Customer & Rincian / Catatan Tambahan (Rute) */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  Nama Customer <span className="text-slate-400 font-normal text-[11px]">(Opsional)</span>
+                </label>
+                <CustomerSelect
+                  value={formData.customer_name_raw}
+                  onChange={v => setFormData({ ...formData, customer_name_raw: v })}
+                  placeholder="Pilih atau ketik customer (opsional)..."
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Rincian / Catatan Tambahan (Rute)</label>
+                <ActivityPresetSelect
+                  category="ACT_EXPLAIN"
+                  placeholder="Pilih atau ketik rute (mis. CIBITUNG - MEDAN)..."
+                  value={formData.act_explaination}
+                  onChange={v => setFormData({ ...formData, act_explaination: v })}
+                />
+              </div>
+            </div>
+
+            {/* Baris 3: Keterangan Aktivitas / Armada (Opsional) */}
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1">
+                Keterangan Aktivitas / Armada <span className="text-slate-400 font-normal text-[11px]">(Opsional)</span>
+              </label>
+              <ActivityPresetSelect
+                category="ACT_INFO"
+                placeholder="Pilih atau ketik armada (opsional, mis. Tronton Wingbox 30T)..."
+                value={formData.act_information}
+                onChange={v => setFormData({ ...formData, act_information: v })}
+              />
+            </div>
+          </div>
+
+          {/* SEKSI 2: INPUT FINANSIAL & TERMIN (SEMUA INPUT USER DIKELOMPOKKAN) */}
+          <div className="bg-slate-50/80 p-3.5 rounded-2xl border border-slate-200/80 space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-black text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+                <DollarSign className="w-3.5 h-3.5 text-sky-700" />
+                Input Finansial & Termin Pembayaran
+              </span>
+              <span className="text-[10px] text-slate-400 font-medium">* Kolom wajib input</span>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+              {/* Grand Cost / HPP */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  Grand Cost (HPP) *
+                </label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs font-bold">Rp</span>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    required
+                    placeholder="28.150.000"
+                    value={formatThousand(formData.grand_cost)}
+                    onChange={e => {
+                      const clean = cleanThousand(e.target.value);
+                      setFormData({
+                        ...formData,
+                        grand_cost: clean,
+                        debit: clean
+                      });
+                    }}
+                    className="w-full bg-white border border-slate-200 rounded-xl py-2 pl-9 pr-3 text-xs text-slate-900 font-bold focus:ring-2 focus:ring-sky-600 focus:outline-none"
+                  />
+                </div>
+                {/* Indikator Terbilang Ringkas */}
+                {formData.grand_cost && Number(formData.grand_cost) > 0 && (
+                  <div className="mt-1 flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-sky-50/80 border border-sky-100 text-[10px] text-sky-900 font-bold animate-fade-in">
+                    <span className="text-sky-500 font-normal">Terbaca:</span>
+                    <span>{terbilangRingkas(formData.grand_cost)}</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Grand Selling */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  Grand Selling (Harga Jual) *
+                </label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs font-bold">Rp</span>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    required
+                    placeholder="30.000.000"
+                    value={formatThousand(formData.grand_selling)}
+                    onChange={e => {
+                      const clean = cleanThousand(e.target.value);
+                      setFormData({
+                        ...formData,
+                        grand_selling: clean
+                      });
+                    }}
+                    className="w-full bg-white border border-slate-200 rounded-xl py-2 pl-9 pr-3 text-xs text-slate-900 font-bold focus:ring-2 focus:ring-sky-600 focus:outline-none"
+                  />
+                </div>
+                {/* Indikator Terbilang Ringkas */}
+                {formData.grand_selling && Number(formData.grand_selling) > 0 && (
+                  <div className="mt-1 flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-emerald-50/80 border border-emerald-100 text-[10px] text-emerald-900 font-bold animate-fade-in">
+                    <span className="text-emerald-500 font-normal">Terbaca:</span>
+                    <span>{terbilangRingkas(formData.grand_selling)}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-0.5">
+              {/* T.O.P */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  Termin Pembayaran (T.O.P) *
+                </label>
+                <div className="relative">
+                  <input
+                    type="number"
+                    min="0"
+                    required
+                    placeholder="14"
+                    value={formData.top_days}
+                    onChange={e => setFormData({ ...formData, top_days: e.target.value })}
+                    className="w-full bg-white border border-slate-200 rounded-xl py-2 px-3 text-xs text-slate-800 font-bold focus:ring-2 focus:ring-sky-600 focus:outline-none pr-12"
+                  />
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">Hari</span>
+                </div>
+              </div>
+
+              {/* Status Pembayaran */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Status Pembayaran</label>
+                <select
+                  value={formData.remarks}
+                  onChange={e => setFormData({ ...formData, remarks: e.target.value })}
+                  className="w-full bg-white border border-slate-200 rounded-xl py-2 px-3 text-xs text-slate-800 font-bold focus:ring-2 focus:ring-sky-600 focus:outline-none cursor-pointer"
+                >
+                  <option value="UNPAID">Belum Lunas (UNPAID)</option>
+                  <option value="PENDING">Sebagian (PENDING)</option>
+                  <option value="PAID">Lunas (PAID)</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          {/* SEKSI 3: HASIL KALKULASI OTOMATIS SISTEM (READ-ONLY DASHBOARD BADGES) */}
+          <div className={`p-3.5 rounded-2xl space-y-3 transition-all duration-300 border-2 ${
+            isDeficit
+              ? 'bg-rose-50/50 border-rose-400 ring-2 ring-rose-200/50 shadow-sm'
+              : isWarningLow
+              ? 'bg-amber-50/50 border-amber-400 ring-2 ring-amber-200/50 shadow-sm'
+              : isSafe
+              ? 'bg-emerald-50/30 border-emerald-400 ring-1 ring-emerald-200/50 shadow-2xs'
+              : 'bg-sky-950/5 border-sky-200/60'
+          }`}>
+            <div className="flex items-center justify-between">
+              <span className={`text-[11px] font-black uppercase tracking-wider flex items-center gap-1.5 ${
+                isDeficit 
+                  ? 'text-rose-950' 
+                  : isWarningLow 
+                  ? 'text-amber-950' 
+                  : isSafe 
+                  ? 'text-emerald-950' 
+                  : 'text-sky-900'
+              }`}>
+                {isDeficit || isWarningLow ? (
+                  <AlertTriangle className={`w-3.5 h-3.5 ${isDeficit ? 'text-rose-600' : 'text-amber-600'}`} />
+                ) : (
+                  <TrendingUp className={`w-3.5 h-3.5 ${isSafe ? 'text-emerald-600' : 'text-sky-700'}`} />
+                )}
+                Hasil Kalkulasi Otomatis Sistem
+              </span>
+              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md transition-colors ${
+                isDeficit
+                  ? 'text-rose-700 bg-rose-100/90 border border-rose-200'
+                  : isWarningLow
+                  ? 'text-amber-700 bg-amber-100/90 border border-amber-200'
+                  : isSafe
+                  ? 'text-emerald-700 bg-emerald-100/90 border border-emerald-200'
+                  : 'text-sky-700 bg-sky-100/70'
+              }`}>
+                {isDeficit ? '⚠️ Defisit Kas' : isWarningLow ? '⚠️ Saldo Menipis' : isSafe ? '✓ Saldo Aman' : 'Auto-calculated'}
+              </span>
+            </div>
+
+            {/* LIVE SALDO IMPACT BAR */}
+            <div className={`rounded-xl p-3 border shadow-2xs transition-colors duration-200 ${
+              isDeficit 
+                ? 'bg-white border-rose-300' 
+                : isWarningLow 
+                ? 'bg-white border-amber-300' 
+                : isSafe
+                ? 'bg-white border-emerald-200'
+                : 'bg-white border-slate-200/80'
+            }`}>
+              <div className="flex items-center justify-between mb-2">
+                <span className={`text-[10px] font-extrabold uppercase tracking-wider flex items-center gap-1.5 ${
+                  isDeficit 
+                    ? 'text-rose-800' 
+                    : isWarningLow 
+                    ? 'text-amber-800' 
+                    : isSafe 
+                    ? 'text-emerald-800' 
+                    : 'text-slate-500'
+                }`}>
+                  <Wallet className={`w-3.5 h-3.5 ${
+                    isDeficit 
+                      ? 'text-rose-600' 
+                      : isWarningLow 
+                      ? 'text-amber-600' 
+                      : isSafe 
+                      ? 'text-emerald-600' 
+                      : 'text-sky-700'
+                  }`} />
+                  Simulasi Dampak ke Saldo Kas
+                </span>
+                {currentSaldo !== null && (costNum > 0 || currentSaldo < 0) && (
+                  <span className={`text-[10px] font-black px-2 py-0.5 rounded-full flex items-center gap-1 ${
+                    isDeficit
+                      ? 'bg-rose-50 text-rose-700 border border-rose-200 animate-pulse'
+                      : isWarningLow
+                      ? 'bg-amber-50 text-amber-700 border border-amber-200'
+                      : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                  }`}>
+                    {isDeficit 
+                      ? '⚠️ Saldo Kas Kurang (Defisit)' 
+                      : isWarningLow 
+                      ? '⚠️ Saldo Kas Menipis' 
+                      : '✓ Saldo Kas Cukup'}
+                  </span>
+                )}
+              </div>
+
+              <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
+                {/* Saldo Saat Ini */}
+                <div className="min-w-0">
+                  <span className="text-[10px] text-slate-400 block font-medium">Saldo Kas Saat Ini</span>
+                  <span className={`font-bold font-mono text-[13px] ${
+                    (currentSaldo ?? 0) < 0 ? 'text-rose-600' : 'text-slate-700'
+                  }`}>
+                    {currentSaldo !== null ? formatRupiah(currentSaldo) : "Memuat..."}
+                  </span>
+                </div>
+
+                <div className="text-slate-300 font-bold hidden sm:block">−</div>
+
+                {/* Biaya Shipment Ini */}
+                <div className="min-w-0">
+                  <span className="text-[10px] text-slate-400 block font-medium">Debit Biaya (Shipment)</span>
+                  <span className="font-bold text-rose-600 font-mono text-[13px]">
+                    − {formatRupiah(costNum)}
+                  </span>
+                </div>
+
+                <ArrowRight className={`w-3.5 h-3.5 shrink-0 hidden sm:block ${
+                  isDeficit 
+                    ? 'text-rose-500' 
+                    : isWarningLow 
+                    ? 'text-amber-500' 
+                    : isSafe 
+                    ? 'text-emerald-500' 
+                    : 'text-sky-700'
+                }`} />
+
+                {/* Estimasi Saldo Akhir */}
+                <div className="min-w-0">
+                  <span className="text-[10px] text-slate-400 block font-medium">Estimasi Sisa Saldo</span>
+                  <span className={`font-black font-mono text-[13px] ${
+                    isDeficit 
+                      ? 'text-rose-600' 
+                      : isWarningLow 
+                      ? 'text-amber-600' 
+                      : isSafe 
+                      ? 'text-emerald-600' 
+                      : 'text-sky-900'
+                  }`}>
+                    {currentSaldo !== null ? formatRupiah(projectedSaldo) : "-"}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5">
+              {/* Auto Debit */}
+              <div className="bg-white rounded-xl p-2.5 border border-slate-200/70 shadow-2xs">
+                <div className="text-[10px] text-slate-500 font-bold uppercase tracking-tight">Debit Kas Keluar</div>
+                <div className="text-xs font-black text-rose-700 font-mono mt-0.5">
+                  {formatRupiah(costNum)}
+                </div>
+                <div className="text-[9px] text-slate-400 mt-0.5 leading-none">= Grand Cost</div>
+              </div>
+
+              {/* Auto Due Date */}
+              <div className="bg-white rounded-xl p-2.5 border border-slate-200/70 shadow-2xs">
+                <div className="text-[10px] text-slate-500 font-bold uppercase tracking-tight">Jatuh Tempo</div>
+                <div className="text-xs font-black text-amber-700 mt-0.5 truncate">
+                  {formatDate(effectiveDueDate)}
+                </div>
+                <div className="text-[9px] text-slate-400 mt-0.5 leading-none">{formData.top_days || 0} hari kerja</div>
+              </div>
+
+              {/* Auto Profit */}
+              <div className="bg-white rounded-xl p-2.5 border border-emerald-200/70 shadow-2xs">
+                <div className="text-[10px] text-emerald-700 font-bold uppercase tracking-tight">Profit Estimasi</div>
+                <div className={`text-xs font-black font-mono mt-0.5 ${profitNum >= 0 ? 'text-emerald-700' : 'text-rose-600'}`}>
+                  {formatRupiah(profitNum)}
+                </div>
+                <div className="text-[9px] text-emerald-600/70 mt-0.5 leading-none">Selling - Cost</div>
+              </div>
+
+              {/* Auto Margin */}
+              <div className="bg-white rounded-xl p-2.5 border border-blue-200/70 shadow-2xs">
+                <div className="text-[10px] text-sky-700 font-bold uppercase tracking-tight">Margin Laba</div>
+                <div className={`text-xs font-black font-mono mt-0.5 ${marginNum >= 0 ? 'text-sky-700' : 'text-rose-600'}`}>
+                  {marginNum}%
+                </div>
+                <div className="text-[9px] text-sky-600/70 mt-0.5 leading-none">Persentase</div>
+              </div>
+            </div>
+          </div>
+
+          {/* ACTION BUTTONS */}
+          <div className="pt-2 flex gap-2.5">
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex-1 py-2.5 rounded-xl font-bold text-xs text-slate-600 hover:text-slate-800 bg-slate-100 hover:bg-slate-200 transition-colors cursor-pointer"
+            >
+              Batal
+            </button>
+            <button
+              type="submit"
+              disabled={loading}
+              className="flex-1 py-2.5 rounded-xl font-bold text-xs text-white bg-sky-700 hover:bg-sky-800 active:scale-95 shadow-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
+            >
+              {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Simpan Shipment"}
+            </button>
+          </div>
+        </form>
+        </div>
+      </div>
+    </div>
+  );
+}

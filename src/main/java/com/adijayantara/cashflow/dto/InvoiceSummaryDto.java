@@ -46,3 +46,4 @@ public class InvoiceSummaryDto {
     @Builder.Default
     private Long overdueCount = 0L;
 }
+

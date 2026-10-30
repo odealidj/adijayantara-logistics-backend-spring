@@ -15,3 +15,4 @@ public class ResetPasswordRequest {
     @JsonProperty("password")
     private String password;
 }
+

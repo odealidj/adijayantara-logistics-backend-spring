@@ -27,3 +27,4 @@ public class UpdateUserInput {
     @JsonProperty("status")
     private String status;
 }
+

@@ -18,3 +18,4 @@ public class UpdateRoleInput {
     @JsonProperty("description")
     private String description;
 }
+

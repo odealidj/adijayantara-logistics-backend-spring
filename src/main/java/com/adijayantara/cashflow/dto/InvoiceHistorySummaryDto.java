@@ -26,3 +26,4 @@ public class InvoiceHistorySummaryDto {
     @Builder.Default
     private List<InvoicePaymentHistoryDto> paymentLogs = new ArrayList<>();
 }
+

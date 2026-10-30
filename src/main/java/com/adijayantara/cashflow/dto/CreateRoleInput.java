@@ -26,3 +26,4 @@ public class CreateRoleInput {
     @JsonProperty("permissions")
     private List<String> permissions;
 }
+

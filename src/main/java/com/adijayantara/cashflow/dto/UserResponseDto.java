@@ -50,3 +50,4 @@ public class UserResponseDto {
     @JsonProperty("updated_at")
     private LocalDateTime updatedAt;
 }
+

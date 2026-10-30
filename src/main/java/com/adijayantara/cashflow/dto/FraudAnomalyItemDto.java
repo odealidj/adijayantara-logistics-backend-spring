@@ -60,3 +60,4 @@ public class FraudAnomalyItemDto {
     @JsonProperty("created_at")
     private LocalDateTime createdAt;
 }
+

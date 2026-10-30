@@ -80,19 +80,23 @@ Kedua backend (Go & Spring) dan kedua frontend dapat berjalan bersamaan secara s
 ---
 
 ### RULE 5: PEMISAHAN REPOSITORI, TARGET REMOTE GIT & COMMIT BOUNDARIES
-Sistem ini menggunakan 3 repositori mandiri yang terisolasi ketat:
-1. **Repositori Khusus Backend Spring Boot (`adijayantara-logistics-backend-spring`)**:
+Sistem ini menggunakan 2 repositori mandiri yang terisolasi ketat:
+1. **Repositori Fullstack Showcase Spring Boot (`adijayantara-logistics-backend-spring`)**:
    - **Target Remote Git**: `git@github.com:odealidj/adijayantara-logistics-backend-spring.git`
    - **Direktori Lokal**: `/home/aliube/Workspace/Adi/adijayantara-logistics-backend-spring`
-   - **Cakupan Kode**: Seluruh perubahan kode Java, Gradle/Maven, Dockerfile Spring, dan dokumentasi Java.
-2. **Repositori Khusus Frontend Spring Boot (`adijayantara-logistics-web-spring`)**:
-   - **Target Remote Git**: `git@github.com:odealidj/adijayantara-logistics-web-spring.git`
-   - **Direktori Lokal**: `/home/aliube/Workspace/Adi/adijayantara-logistics-web-spring`
-   - **Cakupan Kode**: Seluruh perubahan kode UI Next.js khusus showcase Spring Boot (default port `:3001` menunjuk backend `:8081`).
-3. **Repositori Monorepo Utama Produksi (`cashflow-shipment-adi`)**:
+   - **Cakupan Kode**: Seluruh perubahan ekosistem Spring Boot:
+     - Backend Java 21, Gradle, Dockerfile Spring (`src/`, `build.gradle`, dll pada port `:8081`).
+     - Frontend Next.js khusus Spring Showcase (`frontend/` pada port `:3001`).
+2. **Repositori Monorepo Utama Produksi (`cashflow-shipment-adi`)**:
    - **Target Remote Git**: `git@github.com:odealidj/cashflow-shipment-adi.git`
    - **Direktori Lokal**: `/home/aliube/Workspace/Adi/cashflow-shipment-app`
-   - **Cakupan Kode**: Seluruh kode ekosistem produksi Go (Frontend Next.js `apps/web-next`, Core Go `services/core-go`, Gateway `services/gateway-go`, Migrasi Database & Skrip `scripts/`, Dokumen `docs/`, dan Infra).
-4. **Larangan Keras Percampuran Kode (*No Cross-Commit Pollution*)**:
+   - **Cakupan Kode**: Seluruh kode ekosistem produksi Go:
+     - Frontend Next.js Produksi (`apps/web-next` pada port `:3000`).
+     - Core Go API (`services/core-go` pada port `:8080`).
+     - Gateway (`services/gateway-go`).
+     - Migrasi Database PostgreSQL & Skrip (`services/core-go/migrations/`, `scripts/`).
+     - Dokumen & Infra produksi.
+3. **Larangan Keras Percampuran Kode (*No Cross-Commit Pollution*)**:
    - DILARANG KERAS men-commit berkas dari salah satu repositori ke repositori lainnya.
+   - Perubahan pada ekosistem Spring (baik Java `src/` maupun UI `frontend/`) HANYA di-commit ke `adijayantara-logistics-backend-spring.git`.
    - Sebelum menjalankan `git commit` dan `git push`, asisten WAJIB memverifikasi *working directory* dan URL *git remote* agar tidak terjadi salah kamar commit.

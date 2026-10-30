@@ -1,14 +1,17 @@
-# 🚚 PT Adijayantara Logistics Indonesia — Enterprise Backend (Spring Boot Edition)
+# 🚚 PT Adijayantara Logistics Indonesia — Enterprise Fullstack (Spring Boot & Next.js Showcase Edition)
 
 [![Java Version](https://img.shields.io/badge/Java-21%20LTS-ED8B00?style=for-the-badge&logo=openjdk&logoColor=white)](https://openjdk.org/projects/jdk/21/)
 [![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.3.5-6DB33F?style=for-the-badge&logo=springboot&logoColor=white)](https://spring.io/projects/spring-boot)
+[![Next.js](https://img.shields.io/badge/Next.js-16.3-black?style=for-the-badge&logo=next.js&logoColor=white)](https://nextjs.org/)
 [![Virtual Threads](https://img.shields.io/badge/Virtual%20Threads-Project%20Loom-437291?style=for-the-badge)](https://openjdk.org/projects/loom/)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-15-336791?style=for-the-badge&logo=postgresql&logoColor=white)](https://www.postgresql.org/)
 [![Redis](https://img.shields.io/badge/Redis-7-DC382D?style=for-the-badge&logo=redis&logoColor=white)](https://redis.io/)
 
-Modul backend *enterprise-grade* untuk **Sistem Pengendalian Buku Kas Operasional, Manajemen Pengiriman (*Shipment Control*), dan Penagihan Faktur (*Invoicing & Accounts Receivable*)** pada **PT. Adijayantara Logistics Indonesia**.
+Repositori Fullstack Showcase mandiri (*standalone*) untuk **PT. Adijayantara Logistics Indonesia**, yang menggabungkan:
+1. **Backend Engine**: **Java 21 LTS + Spring Boot 3.3.5** (Port `:8081`)
+2. **Frontend UI Engine**: **Next.js 16 + React 19 + Tailwind CSS** (Port `:3001` di folder `frontend/`)
 
-Proyek ini dibangun sebagai implementasi berstandar perbankan & korporasi menggunakan **Java 21 LTS** dan **Spring Boot 3**, yang dirancang dengan **100% API Contract Parity** terhadap antarmuka frontend Next.js serta berbagi skema basis data PostgreSQL yang sama dengan implementasi Golang.
+Proyek ini dirancang dengan **100% API Contract Parity** terhadap antarmuka frontend serta berbagi skema basis data PostgreSQL yang sama dengan implementasi produksi Golang (`cashflow-shipment-adi`), terisolasi penuh secara port dan runtime sehingga bebas bentrok (*anti-collision*).
 
 ---
 
@@ -114,16 +117,23 @@ Jika menggunakan Docker:
 docker start cashflow_db cashflow_redis
 ```
 
-### 2. Kompilasi & Jalankan Service
+### 2. Jalankan Backend Spring Boot (Port :8081)
 ```bash
 ./gradlew bootRun
 ```
-Aplikasi akan aktif di **http://localhost:8081**.
-
-### 3. Akses Swagger UI & Health Check
+Backend aktif di **http://localhost:8081**.
 - **Swagger Documentation**: [http://localhost:8081/swagger-ui.html](http://localhost:8081/swagger-ui.html)
-- **Health Check**: [http://localhost:8081/actuator/health](http://localhost:8081/actuator/health)
+- **Actuator Health**: [http://localhost:8081/actuator/health](http://localhost:8081/actuator/health)
 - **Prometheus Metrics**: [http://localhost:8081/actuator/prometheus](http://localhost:8081/actuator/prometheus)
+
+### 3. Jalankan Frontend Next.js Showcase (Port :3001)
+Buka terminal baru di subdirektori `frontend/`:
+```bash
+cd frontend
+npm install
+npm run dev
+```
+Frontend web aktif di **http://localhost:3001**, otomatis terhubung ke Backend Spring Boot di port `:8081`.
 
 ---
 

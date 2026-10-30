@@ -83,3 +83,4 @@ public class CustomerDisciplineAndParetoResponse {
         private boolean isChurnWarning;
     }
 }
+

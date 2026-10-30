@@ -32,3 +32,4 @@ public class UtilityController {
         return ResponseEntity.ok("OK");
     }
 }
+

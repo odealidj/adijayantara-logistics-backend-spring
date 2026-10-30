@@ -50,3 +50,4 @@ public class StaffSlaItemDto {
     @JsonProperty("last_active_at")
     private String lastActiveAt;
 }
+

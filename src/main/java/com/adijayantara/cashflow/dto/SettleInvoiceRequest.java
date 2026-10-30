@@ -28,3 +28,4 @@ public class SettleInvoiceRequest {
     @JsonProperty("notes")
     private String notes;
 }
+

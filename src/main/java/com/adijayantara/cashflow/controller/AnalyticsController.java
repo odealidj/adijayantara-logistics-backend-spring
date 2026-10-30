@@ -65,3 +65,4 @@ public class AnalyticsController {
         return ResponseEntity.ok(ApiResponse.success("Berhasil mengambil analisis efisiensi dan konsentrasi vendor", response));
     }
 }
+

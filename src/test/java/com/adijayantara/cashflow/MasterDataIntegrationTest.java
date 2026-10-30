@@ -199,3 +199,4 @@ class MasterDataIntegrationTest {
         assertThat(deleted.getDeletedAt()).isNotNull();
     }
 }
+

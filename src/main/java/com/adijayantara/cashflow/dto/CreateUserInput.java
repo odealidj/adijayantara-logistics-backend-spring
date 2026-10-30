@@ -30,3 +30,4 @@ public class CreateUserInput {
     @JsonProperty("password")
     private String password;
 }
+

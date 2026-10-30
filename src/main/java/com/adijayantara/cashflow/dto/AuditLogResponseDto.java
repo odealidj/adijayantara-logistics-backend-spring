@@ -70,3 +70,4 @@ public class AuditLogResponseDto {
     @JsonProperty("created_at")
     private LocalDateTime createdAt;
 }
+

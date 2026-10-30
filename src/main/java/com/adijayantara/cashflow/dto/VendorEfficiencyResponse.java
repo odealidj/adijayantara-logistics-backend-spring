@@ -68,3 +68,4 @@ public class VendorEfficiencyResponse {
         private boolean isDominant;
     }
 }
+

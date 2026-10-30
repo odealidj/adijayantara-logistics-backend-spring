@@ -79,3 +79,4 @@ public class ActivityPresetController {
         return ResponseEntity.ok(ApiResponse.success("Preset deleted successfully", null));
     }
 }
+

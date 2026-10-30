@@ -1,0 +1,203 @@
+@import "tailwindcss";
+
+@theme {
+  --color-brand-50: #f0f5fa;
+  --color-brand-100: #e2ebf5;
+  --color-brand-500: #4a779d;
+  --color-brand-600: #3b668d;
+  --color-brand-700: #2f5373;
+  --color-brand-900: #1d354b;
+  --color-navy-dark: #223249;
+  --color-navy-light: #2c3f5b;
+  --color-corp-navy: #1a365d;
+  --color-background: #f4f6f9;
+  --color-foreground: #1e293b;
+}
+
+:root {
+  --background: #f4f6f9;
+  --foreground: #1e293b;
+}
+
+body {
+  background: #f4f6f9;
+  color: #1e293b;
+  font-family: var(--font-sans), system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  min-height: 100vh;
+}
+
+/* Modern Card Panels (Replaces dark glass-panel) */
+.glass-panel {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 1px 2px -1px rgba(0, 0, 0, 0.05);
+}
+
+/* Modern Clean Inputs (Replaces dark glass-input) */
+.glass-input {
+  background: #f8fafc;
+  border: 1px solid #cbd5e1;
+  color: #0f172a;
+  transition: all 0.2s ease;
+}
+
+.glass-input:focus {
+  background: #ffffff;
+  border-color: #3b82f6;
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Smooth Scrolling & Responsive Root Scaling */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Responsive Laptop & Compact Screen Scaling (Global Dashboard Fit) */
+@media (max-width: 1440px), (max-height: 860px) {
+  html {
+    font-size: 14.5px;
+  }
+}
+
+@media (max-width: 1280px), (max-height: 768px) {
+  html {
+    font-size: 14px;
+  }
+}
+
+/* Modern Soft Scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.35);
+  border-radius: 9999px;
+  border: 1px solid transparent;
+  background-clip: padding-box;
+  transition: background-color 0.2s ease, opacity 0.2s ease;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(100, 116, 139, 0.65);
+}
+
+/* Custom Soft Scrollbar Utility for Container & Tables */
+.soft-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(148, 163, 184, 0.4) transparent;
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+}
+
+.soft-scrollbar::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+
+.soft-scrollbar::-webkit-scrollbar-track {
+  background: rgba(241, 245, 249, 0.4);
+  border-radius: 9999px;
+  margin: 4px;
+}
+
+.soft-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.45);
+  border-radius: 9999px;
+  transition: background-color 0.2s ease;
+}
+
+.soft-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(59, 130, 246, 0.7);
+}
+
+/* Hide Next.js Dev Indicator / Tool Button */
+nextjs-portal,
+[data-nextjs-dev-tools-button],
+[data-nextjs-toast],
+[data-nextjs-dialog-overlay] {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
+/* Print Optimization (A4 Landscape & Page Breaks) */
+@media print {
+  @page {
+    size: A4 landscape;
+    margin: 0;
+  }
+
+  *,
+  *::before,
+  *::after {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  body {
+    background: #ffffff !important;
+    color: #000000 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  /* Sembunyikan sidebar, top header, navigasi, dan elemen non-cetak */
+  header,
+  aside,
+  nav,
+  .print-hide,
+  .print\:hidden {
+    display: none !important;
+  }
+
+  main {
+    padding: 0 !important;
+    margin: 0 !important;
+    overflow: visible !important;
+    max-height: none !important;
+  }
+
+  /* Hilangkan scrollbars & background container saat cetak */
+  .soft-scrollbar,
+  .overflow-x-auto,
+  .overflow-y-auto {
+    overflow: visible !important;
+  }
+
+  table {
+    page-break-inside: auto;
+  }
+
+  tr {
+    page-break-inside: avoid;
+    page-break-after: auto;
+  }
+
+  thead {
+    display: table-header-group;
+  }
+
+  tfoot {
+    display: table-footer-group;
+  }
+}
+
+

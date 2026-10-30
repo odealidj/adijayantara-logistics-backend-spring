@@ -40,3 +40,4 @@ public class CreateNotificationInput {
     @JsonProperty("metadata")
     private String metadata;
 }
+

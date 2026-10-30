@@ -36,3 +36,4 @@ public class AuditSummaryKpiDto {
     @JsonProperty("total_staff_monitored")
     private long totalStaffMonitored;
 }
+

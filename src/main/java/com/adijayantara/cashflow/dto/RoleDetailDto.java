@@ -47,3 +47,4 @@ public class RoleDetailDto {
     @JsonProperty("updated_at")
     private LocalDateTime updatedAt;
 }
+
